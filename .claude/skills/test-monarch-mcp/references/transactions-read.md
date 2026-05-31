@@ -1,6 +1,10 @@
-# Phase 3 — Transaction Reads (11 tests)
+# Phase 3 — Transaction Reads (9 tests)
 
 All tests use `get_transactions` with various parameter combinations.
+
+> **Scope:** This phase covers agent-correctness (right params, correct response handling) and one
+> representative validation error. Adversarial inputs (extreme/negative/zero pagination, invalid date
+> formats) live in the live e2e suite (`tests/integration/`), not here.
 
 ---
 
@@ -93,22 +97,7 @@ get_transactions(start_date = "2025-01-01")
 
 ---
 
-## Test 3.6 — Only end_date (Missing start_date)
-
-**Tool call:**
-```
-get_transactions(end_date = "2025-01-31")
-```
-
-**Expected:** An error message indicating both start_date and end_date are required.
-
-**Validation:** Response is a string containing "both" or "required" or "start_date" (case-insensitive).
-
-**Cleanup:** None.
-
----
-
-## Test 3.7 — Pagination: offset=0 vs offset=5
+## Test 3.6 — Pagination: offset=0 vs offset=5
 
 **Tool calls:**
 ```
@@ -127,22 +116,7 @@ get_transactions(limit = 5, offset = 5)
 
 ---
 
-## Test 3.8 — Invalid Date Format
-
-**Tool call:**
-```
-get_transactions(start_date = "not-a-date", end_date = "also-not-a-date")
-```
-
-**Expected:** A graceful error string indicating invalid date format.
-
-**Validation:** Response is a string containing "error", "invalid", "format", "date", or "parse" (case-insensitive).
-
-**Cleanup:** None.
-
----
-
-## Test 3.9 — Future Dates (2030)
+## Test 3.7 — Future Dates (2030)
 
 **Tool call:**
 ```
@@ -157,7 +131,7 @@ get_transactions(start_date = "2030-01-01", end_date = "2030-12-31")
 
 ---
 
-## Test 3.10 — needs_review=True Filter
+## Test 3.8 — needs_review=True Filter
 
 **Tool call:**
 ```
@@ -172,7 +146,7 @@ get_transactions(needs_review = True)
 
 ---
 
-## Test 3.11 — needs_review=False Filter
+## Test 3.9 — needs_review=False Filter
 
 **Tool call:**
 ```

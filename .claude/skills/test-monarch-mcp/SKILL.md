@@ -1,6 +1,6 @@
 ---
 name: test-monarch-mcp
-description: Systematically test Monarch Money MCP tools in read-only mode (27 tools, 61 tests) or write-enabled mode (all 42 tools, 124 tests). Account-agnostic (discovers IDs at runtime) and self-cleaning (deletes everything it creates in write mode). Batches each phase into a subagent so large tool payloads stay out of the orchestrator's context.
+description: Systematically test Monarch Money MCP tools in read-only mode (27 tools, 54 tests) or write-enabled mode (all 42 tools, 101 tests). Account-agnostic (discovers IDs at runtime) and self-cleaning (deletes everything it creates in write mode). Batches each phase into a subagent so large tool payloads stay out of the orchestrator's context.
 user_invocable: true
 ---
 
@@ -16,15 +16,21 @@ inside the subagents and out of your context.
 
 Run tests across 13 phases, track results, and clean up after yourself.
 
+> **Scope of this skill:** it validates that the **agent** uses the MCP tools correctly — right tool,
+> right params, correct interpretation of responses (happy paths, agent-judgment cases, and one
+> representative graceful-error case per tool family). It does **not** stress-test tool robustness.
+> Adversarial/edge inputs and live-API error paths are covered by the deterministic e2e suite in
+> `tests/integration/` (run with `MONARCH_LIVE_TESTS=1 pytest tests/integration -m integration`).
+
 ---
 
 ## Mode Support
 
 This test suite supports two modes, auto-detected at startup:
 
-- **Read-only mode** (default): Tests 27 read-only tools (61 tests). Write-dependent tests are
+- **Read-only mode** (default): Tests 27 read-only tools (54 tests). Write-dependent tests are
   skipped. No data is created, modified, or deleted.
-- **Write-enabled mode** (`--enable-write`): Tests all 42 tools (124 tests). Creates, modifies, and
+- **Write-enabled mode** (`--enable-write`): Tests all 42 tools (101 tests). Creates, modifies, and
   deletes data on your live Monarch account. Self-cleaning.
 
 ---
@@ -73,12 +79,11 @@ Use the Task tool (subagent type: `general-purpose`). The prompt you pass must c
 {
   "phase": 6,
   "phase_name": "Transaction CRUD",
-  "summary": { "passed": 19, "failed": 1, "skipped": 1 },
+  "summary": { "passed": 14, "failed": 1, "skipped": 0 },
   "results": [
     { "test": "6.1", "status": "PASS" },
-    { "test": "6.10", "status": "FAIL",
-      "detail": "expected amount -99.99; got error '<one-line msg>'; params: amount=-99.99" },
-    { "test": "2.2", "status": "SKIP", "detail": "no investment account" }
+    { "test": "6.7", "status": "FAIL",
+      "detail": "expected amount -99.99; got error '<one-line msg>'; params: amount=-99.99" }
   ],
   "created_resources": { "transactions": [], "tags": [], "categories": [], "accounts": [] },
   "self_cleanup": { "deleted": ["txn:abc"], "failed": [] }
@@ -108,17 +113,17 @@ Use the Task tool (subagent type: `general-purpose`). The prompt you pass must c
 | 0 | Discovery | (inline subagent — see Phase 0) | runs | no |
 | 1 | Auth Tools | `references/auth-tools.md` | all (3) | no |
 | 2 | Accounts & Holdings | `references/accounts-and-holdings.md` | all (5) | no |
-| 3 | Transaction Reads | `references/transactions-read.md` | all (11) | no |
-| 4 | Budgets, Cashflow & Budget Amounts | `references/budgets-and-cashflow.md` | 4.1–4.12 | yes (4.13–4.15) |
+| 3 | Transaction Reads | `references/transactions-read.md` | all (9) | no |
+| 4 | Budgets, Cashflow & Budget Amounts | `references/budgets-and-cashflow.md` | 4.1–4.8 | yes (4.9–4.10) |
 | 5 | Tag CRUD | `references/tag-crud.md` | 5.1 | yes |
 | 6 | Transaction CRUD | `references/transaction-crud.md` | — (skip) | yes |
 | 7 | Transaction Tagging | `references/transaction-tagging.md` | — (skip) | yes |
 | 8 | Categories | `references/categories.md` | 8.1–8.3 | yes |
-| 9 | Details & Splits | `references/transaction-details-and-splits.md` | 9.1–9.5 | yes (9.6–9.8) |
+| 9 | Details & Splits | `references/transaction-details-and-splits.md` | 9.1–9.4 | yes (9.5–9.7) |
 | 10 | Read-Only Tools | `references/read-only-tools.md` | all (9) | no |
 | 11 | Account Management | `references/account-management.md` | 11.1, 11.6-alt, 11.7–11.10 | yes |
 | 12 | Analytics | `references/analytics-tools.md` | all (5) | no |
-| 13 | Transaction Rules | `references/transaction-rules.md` | 13.8 | yes |
+| 13 | Transaction Rules | `references/transaction-rules.md` | 13.7 | yes |
 
 > **Phase 11 read-only note:** run **11.6-alt** instead of 11.6 — it calls `get_account_history` with
 > `{checking_account_id}` because no account is created in read-only mode.
@@ -174,7 +179,7 @@ The state file is `mcp-test-state.json` in the project root.
   },
   "results": {},
   "summary": {
-    "total": 124,
+    "total": 101,
     "passed": 0,
     "failed": 0,
     "skipped": 0
@@ -182,8 +187,8 @@ The state file is `mcp-test-state.json` in the project root.
 }
 ```
 
-In **read-only mode**, `summary.total` is `61` and `original_values` is omitted (no mutations happen).
-In **write-enabled mode**, `summary.total` is `124`.
+In **read-only mode**, `summary.total` is `54` and `original_values` is omitted (no mutations happen).
+In **write-enabled mode**, `summary.total` is `101`.
 
 ### Update Cadence
 
@@ -234,10 +239,10 @@ approval**:
 
 **Server is running in read-only mode (27 tools).**
 
-I'll run 61 read-only tests and skip 63 write tests. No data will be created, modified, or deleted on
+I'll run 54 read-only tests and skip 47 write tests. No data will be created, modified, or deleted on
 your Monarch account.
 
-To test all 124 tests, disable `monarch-money-read-only` and enable `monarch-money` in `.mcp.json`,
+To test all 101 tests, disable `monarch-money-read-only` and enable `monarch-money` in `.mcp.json`,
 then restart.
 
 **Proceed with read-only tests?**
@@ -250,7 +255,7 @@ then restart.
 
 **WARNING: Server is running in read-write mode (all 42 tools).**
 
-I'll run all 124 tests. This will **create, modify, and delete** data on your **live Monarch Money
+I'll run all 101 tests. This will **create, modify, and delete** data on your **live Monarch Money
 account**:
 
 - It **creates and deletes** transactions, tags, categories, and accounts.
@@ -424,20 +429,20 @@ subagent returns.
 ╠══════════════════════════════════════════════════╣
 ║ Phase 1  — Auth Tools:        3/3  PASS          ║
 ║ Phase 2  — Accounts:          5/5  PASS          ║
-║ Phase 3  — Transaction Reads: 11/11 PASS         ║
-║ Phase 4  — Budgets/Cashflow:  12/12 PASS         ║
+║ Phase 3  — Transaction Reads: 9/9  PASS          ║
+║ Phase 4  — Budgets/Cashflow:  8/8  PASS          ║
 ║ Phase 5  — Tag CRUD:          1/1  PASS          ║
 ║ Phase 6  — Transaction CRUD:  SKIPPED (write)    ║
 ║ Phase 7  — Tagging:           SKIPPED (write)    ║
 ║ Phase 8  — Categories:        3/3  PASS          ║
-║ Phase 9  — Details/Splits:    5/5  PASS          ║
+║ Phase 9  — Details/Splits:    4/4  PASS          ║
 ║ Phase 10 — Read-Only Tools:   9/9  PASS          ║
 ║ Phase 11 — Account Mgmt:      6/6  PASS          ║
 ║ Phase 12 — Analytics:         5/5  PASS          ║
 ║ Phase 13 — Rules:             1/1  PASS          ║
 ╠══════════════════════════════════════════════════╣
-║ TOTAL: 61 passed, 0 failed, 0 skipped           ║
-║ Write tests skipped: 63 (server in read-only)    ║
+║ TOTAL: 54 passed, 0 failed, 0 skipped           ║
+║ Write tests skipped: 47 (server in read-only)    ║
 ╚══════════════════════════════════════════════════╝
 ```
 
@@ -449,19 +454,19 @@ subagent returns.
 ╠══════════════════════════════════════════════════╣
 ║ Phase 1  — Auth Tools:        3/3  PASS          ║
 ║ Phase 2  — Accounts:          5/5  PASS          ║
-║ Phase 3  — Transaction Reads: 11/11 PASS         ║
-║ Phase 4  — Budgets/Cashflow:  15/15 PASS         ║
-║ Phase 5  — Tag CRUD:          11/11 PASS         ║
-║ Phase 6  — Transaction CRUD:  21/21 PASS         ║
-║ Phase 7  — Tagging:           5/5  PASS          ║
-║ Phase 8  — Categories:        10/10 PASS         ║
-║ Phase 9  — Details/Splits:    8/8  PASS          ║
+║ Phase 3  — Transaction Reads: 9/9  PASS          ║
+║ Phase 4  — Budgets/Cashflow:  10/10 PASS         ║
+║ Phase 5  — Tag CRUD:          5/5  PASS          ║
+║ Phase 6  — Transaction CRUD:  15/15 PASS         ║
+║ Phase 7  — Tagging:           4/4  PASS          ║
+║ Phase 8  — Categories:        9/9  PASS          ║
+║ Phase 9  — Details/Splits:    7/7  PASS          ║
 ║ Phase 10 — Read-Only Tools:   9/9  PASS          ║
 ║ Phase 11 — Account Mgmt:      10/10 PASS         ║
 ║ Phase 12 — Analytics:         5/5  PASS          ║
-║ Phase 13 — Transaction Rules: 11/11 PASS         ║
+║ Phase 13 — Transaction Rules: 10/10 PASS         ║
 ╠══════════════════════════════════════════════════╣
-║ TOTAL: 124 passed, 0 failed, 0 skipped          ║
+║ TOTAL: 101 passed, 0 failed, 0 skipped          ║
 ╚══════════════════════════════════════════════════╝
 ```
 

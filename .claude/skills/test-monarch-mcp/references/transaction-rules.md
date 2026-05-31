@@ -1,7 +1,11 @@
-# Phase 13 — Transaction Rules (11 tests)
+# Phase 13 — Transaction Rules (10 tests)
 
-> **Read-only mode:** Run test 13.8 only (`get_transaction_rules`). Skip the rest (create/delete
+> **Read-only mode:** Run test 13.7 only (`get_transaction_rules`). Skip the rest (create/delete
 > require write tools).
+
+> **Scope:** Create variants (happy), one create-validation error, list, delete happy, one delete
+> error, and cleanup verification. The redundant invalid-operator validation case is covered by the
+> mocked unit tests.
 
 Use `{valid_category_id}` from discovery for all `set_category_id` arguments.
 
@@ -37,28 +41,24 @@ Call `create_transaction_rule(set_category_id={valid_category_id}, merchant_name
 Call `create_transaction_rule(set_category_id={valid_category_id})`.
 **Expected:** JSON with an `error` key indicating at least one of `merchant_name_value` or `original_statement_value` is required.
 
-## 13.7 — create_transaction_rule: validation — invalid operator
-Call `create_transaction_rule(set_category_id={valid_category_id}, merchant_name_value="MCP-Test-Op", merchant_name_operator="regex")`.
-**Expected:** JSON with an `error` key indicating `merchant_name_operator` must be `contains` or `eq`.
-
-## 13.8 — get_transaction_rules: lists rules (incl. created ones)
+## 13.7 — get_transaction_rules: lists rules (incl. created ones)
 Call `get_transaction_rules()`.
 **Expected:** A JSON array. Each item has `id`, `set_category_id`, `set_category_name`,
 `merchant_name_criteria`, and `original_statement_criteria`. The rules created in 13.1–13.5 appear,
 with criteria values lowercased (e.g. `mcp-test-merchant`). **Record the IDs** of every rule whose
-criteria value contains `mcp-test` (case-insensitive) — used for 13.9 and cleanup.
+criteria value contains `mcp-test` (case-insensitive) — used for 13.8 and cleanup.
 
 > In read-only mode, run only this test and stop after it (no rules were created to assert on; just
 > verify the call returns a list without error).
 
-## 13.9 — delete_transaction_rule: happy path
-Pick one `mcp-test` rule ID from 13.8. Call `delete_transaction_rule(rule_id={that_id})`.
+## 13.8 — delete_transaction_rule: happy path
+Pick one `mcp-test` rule ID from 13.7. Call `delete_transaction_rule(rule_id={that_id})`.
 **Expected:** JSON `{ "deleted": true, "rule_id": "{that_id}" }`.
 
-## 13.10 — delete_transaction_rule: invalid ID
+## 13.9 — delete_transaction_rule: invalid ID
 Call `delete_transaction_rule(rule_id="000000000000000000")`.
 **Expected:** A graceful error string (Monarch returns "Not found"). No crash.
 
-## 13.11 — cleanup verification
+## 13.10 — cleanup verification
 Call `get_transaction_rules()` again and confirm **zero** rules with `mcp-test` criteria remain
 (the cleanup phase deletes any still present). The account should be back to its pre-test rule set.

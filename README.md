@@ -214,6 +214,36 @@ Create a tag called "Business Expenses" in red
 | `get_subscription_details` | Get subscription status | read |
 | `get_credit_history` | Get credit score history | read |
 
+## Testing
+
+This project has two complementary test surfaces:
+
+**1. Mocked unit tests (the quality gate)** — fast, offline, no Monarch connection. These run in CI
+and must stay green:
+
+```bash
+uv run pytest tests/
+```
+
+The Monarch client is mocked, so these never touch a real account. Live e2e tests (below) are
+deselected by default.
+
+**2. Live end-to-end (e2e) integration tests** — exercise the MCP tools against a **real** Monarch
+account to verify they handle the live API robustly (adversarial/edge inputs, server-side error
+paths). They are opt-in and never run in CI:
+
+```bash
+MONARCH_LIVE_TESTS=1 uv run pytest tests/integration -m integration
+```
+
+Prerequisites: a stored keyring token (run `python login_setup.py` once), or `MONARCH_EMAIL` /
+`MONARCH_PASSWORD` in the environment. Without these, the suite skips. The tests create and delete
+data prefixed with `MCP-Test-` and self-clean (a post-suite sweep removes any residue). See
+[`tests/integration/README.md`](tests/integration/README.md) for details and safety notes.
+
+> There is also a separate **agent** test skill (`.claude/skills/test-monarch-mcp/`) that drives an
+> AI agent to verify it *calls* the tools correctly — distinct from the two pytest suites above.
+
 ## 🙏 Acknowledgments
 
 Forked from [@robcerda](https://github.com/robcerda)'s [monarch-mcp-server](https://github.com/robcerda/monarch-mcp-server), maintained by vargahis.
