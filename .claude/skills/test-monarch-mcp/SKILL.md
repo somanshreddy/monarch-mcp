@@ -371,6 +371,10 @@ update_transaction(
 )
 ```
 
+> **Clearing notes:** if `original_values.notes` was null/empty, pass `notes=""`
+> (an empty string) — `update_transaction` treats `null` as "leave unchanged" and
+> only an empty string clears the field. (Same for `goal_id`: pass `""` to unlink.)
+
 #### Step 2: Remove tags from the test transaction
 
 ```

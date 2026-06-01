@@ -528,16 +528,20 @@ async def update_transaction(  # pylint: disable=too-many-arguments,too-many-pos
     """
     Update an existing transaction in Monarch Money.
 
+    Clearing fields: omitting a field (or passing null) leaves it unchanged.
+    To *clear* notes or unlink a goal, pass an empty string ``""`` — passing
+    null does not clear them.
+
     Args:
         transaction_id: The ID of the transaction to update
         category_id: New category ID
         merchant_name: New merchant name
-        goal_id: Goal ID to associate with the transaction
+        goal_id: Goal ID to associate with the transaction; pass "" to unlink
         amount: New transaction amount
         date: New transaction date in YYYY-MM-DD format
         hide_from_reports: Whether to hide the transaction from reports
         needs_review: Whether the transaction needs review
-        notes: Transaction notes
+        notes: Transaction notes; pass "" to clear existing notes (null = unchanged)
     """
 
     async def _update_transaction():
