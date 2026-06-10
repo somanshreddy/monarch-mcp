@@ -183,6 +183,35 @@ def test_mfa_success():
     assert resp["success"] is True
 
 
+def test_auth_state_clear_secrets():
+    state = _AuthState(email="a@b.com", password="pass", awaiting_mfa=True)
+    state.clear_secrets()
+
+    assert state.email == ""
+    assert state.password == ""
+    assert state.awaiting_mfa is False
+
+
+def test_mfa_success_clears_cached_credentials():
+    # The plaintext password (cached across the MFA challenge) must not
+    # linger in memory after authentication completes.
+    handler = _make_handler()
+    handler._send_json = Mock()
+    handler.auth_state.email = "a@b.com"
+    handler.auth_state.password = "pass"
+    handler.auth_state.awaiting_mfa = True
+
+    with (
+        patch("monarch_mcp.auth_server.MonarchMoney"),
+        patch("monarch_mcp.auth_server._run_sync"),
+        patch("monarch_mcp.auth_server.secure_session"),
+    ):
+        handler._handle_mfa({"code": "123456"})
+
+    assert handler.auth_state.email == ""
+    assert handler.auth_state.password == ""
+
+
 # ===================================================================
 # _send_json / _send_html
 # ===================================================================

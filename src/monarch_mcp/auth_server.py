@@ -230,6 +230,17 @@ class _AuthState:
     awaiting_mfa: bool = False
     completed: bool = False
 
+    def clear_secrets(self) -> None:
+        """Drop the cached credentials once they are no longer needed.
+
+        The password is cached only to span the MFA challenge; scrub it (and
+        the email) as soon as auth completes or the server shuts down so it
+        does not linger in memory for the lifetime of the process.
+        """
+        self.email = ""
+        self.password = ""
+        self.awaiting_mfa = False
+
 
 class _AuthHandler(BaseHTTPRequestHandler):
     """HTTP handler that serves the login page and processes auth requests."""
@@ -383,6 +394,7 @@ class _AuthHandler(BaseHTTPRequestHandler):
 
             secure_session.save_authenticated_session(mm)
             self.auth_state.completed = True
+            self.auth_state.clear_secrets()
             logger.info("Browser authentication successful (with MFA)")
             self._send_json({"success": True})
 
@@ -514,6 +526,7 @@ def trigger_auth_flow() -> None:
             if state.completed:
                 logger.info("Auth server stopped — authentication complete")
         finally:
+            state.clear_secrets()
             with _auth_lock:
                 _auth_guard["active"] = False
 
