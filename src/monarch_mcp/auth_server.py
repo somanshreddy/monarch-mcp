@@ -32,6 +32,18 @@ _AUTH_TIMEOUT = 600  # 10 minutes
 _auth_lock = threading.Lock()
 _auth_guard: dict[str, bool] = {"active": False}
 
+# Generic client-facing messages for unexpected errors. The real exception is
+# written to the server log (stderr) only; we deliberately do not echo it to the
+# browser (CWE-209), but we point the operator to where the detail lives.
+_LOGIN_ERROR_MESSAGE = (
+    "Login failed due to an unexpected error. "
+    "Please try again, or check the server logs for details."
+)
+_MFA_ERROR_MESSAGE = (
+    "MFA verification failed due to an unexpected error. "
+    "Please try again, or check the server logs for details."
+)
+
 # ── HTML served to the browser ──────────────────────────────────────────
 
 _LOGIN_PAGE = """\
@@ -345,9 +357,7 @@ class _AuthHandler(BaseHTTPRequestHandler):
 
         except Exception as exc:  # pylint: disable=broad-exception-caught
             logger.error("Unexpected error during login: %s", exc)
-            self._send_json(
-                {"error": "Login failed due to an unexpected error. Please try again."}
-            )
+            self._send_json({"error": _LOGIN_ERROR_MESSAGE})
 
     def _handle_mfa(self, data: dict):
         """Verify the MFA code and complete authentication."""
@@ -389,9 +399,7 @@ class _AuthHandler(BaseHTTPRequestHandler):
 
         except Exception as exc:  # pylint: disable=broad-exception-caught
             logger.error("Unexpected error during MFA: %s", exc)
-            self._send_json(
-                {"error": "MFA verification failed due to an unexpected error. Please try again."}
-            )
+            self._send_json({"error": _MFA_ERROR_MESSAGE})
 
     # ── Response helpers ──
 

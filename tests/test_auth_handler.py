@@ -454,6 +454,8 @@ def test_login_unexpected_error_returns_generic_message():
     resp = handler._send_json.call_args[0][0]
     assert "error" in resp
     assert "internal stack detail xyz" not in resp["error"]
+    # Points the operator to where the real detail lives, without leaking it.
+    assert "logs" in resp["error"].lower()
 
 
 def test_mfa_unexpected_error_returns_generic_message():
@@ -474,6 +476,8 @@ def test_mfa_unexpected_error_returns_generic_message():
     resp = handler._send_json.call_args[0][0]
     assert "error" in resp
     assert "internal stack detail xyz" not in resp["error"]
+    # Points the operator to where the real detail lives, without leaking it.
+    assert "logs" in resp["error"].lower()
 
 
 # ===================================================================
