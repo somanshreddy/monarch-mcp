@@ -137,6 +137,18 @@ Key details:
 - **No fallback by design** — the keyring is the only credential store; there is no
   email/password environment-variable path (see [docs/authentication.md](docs/authentication.md))
 
+#### Signing in with Google?
+
+If you use "Continue with Google", your Monarch account has no password and the login form
+above cannot work. Import the token from your existing browser session instead — no password,
+no new credential on your account:
+
+```bash
+monarch-mcp-import-token
+```
+
+See [docs/authentication.md](docs/authentication.md) for where to find the token.
+
 For technical details on the auth architecture, see [docs/authentication.md](docs/authentication.md).
 
 ### Usage Examples

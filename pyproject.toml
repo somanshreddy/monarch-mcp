@@ -46,6 +46,7 @@ Issues = "https://github.com/vargahis/monarch-mcp/issues"
 
 [project.scripts]
 monarch-mcp = "monarch_mcp.server:main"
+monarch-mcp-import-token = "monarch_mcp.token_import:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

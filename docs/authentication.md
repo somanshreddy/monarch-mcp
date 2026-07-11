@@ -10,6 +10,30 @@ Technical details on how the Monarch MCP Server handles authentication, session 
 4. The temporary auth server shuts down automatically
 5. If a token later expires, the same flow is re-triggered on the next tool call
 
+Note that the page in step 2 is served by *this* server on `127.0.0.1` — it is **not**
+monarch.com, and this is **not** OAuth. Your password is posted to the local process,
+which calls the Monarch API with it. The password is never written to disk and is
+scrubbed from memory once login completes, but the process does handle it.
+
+## Signing in with Google (no password)
+
+If you use "Continue with Google", your Monarch account **has no password**, so the flow
+above cannot work — there is nothing to type into it. Rather than adding a password to
+your account (a new credential that can be phished or stuffed), import the session token
+your normal Google sign-in already produces:
+
+```bash
+monarch-mcp-import-token
+```
+
+You sign in on monarch.com exactly as you always do, copy the token from the
+`Authorization: Token <TOKEN>` request header on any `graphql` request (DevTools →
+Network), and paste it when prompted. The script reads it from stdin — never from
+`sys.argv`, which is visible to other processes via `ps` and lands in shell history —
+validates it with a live API call, and stores it in the keyring only if it works.
+
+This path never gives the server a password and creates no new credential on the account.
+
 ## Session Management
 
 - Tokens are stored securely in the system keyring (service: `com.mcp.monarch-mcp`)
