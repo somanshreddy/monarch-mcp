@@ -139,15 +139,18 @@ Key details:
 
 #### Signing in with Google?
 
-If you use "Continue with Google", your Monarch account has no password and the login form
-above cannot work. Import the token from your existing browser session instead — no password,
-no new credential on your account:
+If you use "Continue with Google", your Monarch account has no password, so the login form
+above cannot work — and there is **no token to import either**. Google sessions are
+authenticated with a Django session cookie; the `Authorization: Token` this server uses is
+only ever minted in exchange for an email and password.
 
-```bash
-monarch-mcp-import-token
-```
+You need to set a password on your Monarch account (Settings → Security).
+**Enable Two-Factor Authentication before you do** — otherwise the new password becomes a
+single-factor way into your account, which is a net downgrade. See
+[docs/authentication.md](docs/authentication.md) for the full reasoning.
 
-See [docs/authentication.md](docs/authentication.md) for where to find the token.
+Already have a token (password accounts only)? Store it directly with
+`monarch-mcp-import-token`.
 
 For technical details on the auth architecture, see [docs/authentication.md](docs/authentication.md).
 

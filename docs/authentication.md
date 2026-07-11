@@ -15,24 +15,48 @@ monarch.com, and this is **not** OAuth. Your password is posted to the local pro
 which calls the Monarch API with it. The password is never written to disk and is
 scrubbed from memory once login completes, but the process does handle it.
 
-## Signing in with Google (no password)
+## Signing in with Google
 
 If you use "Continue with Google", your Monarch account **has no password**, so the flow
-above cannot work — there is nothing to type into it. Rather than adding a password to
-your account (a new credential that can be phished or stuffed), import the session token
-your normal Google sign-in already produces:
+above cannot work — there is nothing to type into it.
+
+**There is also no token to import.** The `Authorization: Token <...>` scheme this server
+uses is minted by Monarch's `/auth/login/` endpoint in exchange for an email and password.
+A Google sign-in never hits that endpoint, so no such token is ever created for the
+account. The web app authenticates a Google session with a Django **session cookie**
+(`session_id` + `csrftoken`) instead — a different auth scheme entirely, not a different
+way of carrying the same credential. Inspecting a `graphql` request in DevTools for a
+Google-signed-in account shows a `Cookie` header and no `Authorization` header.
+
+Replicating that cookie session from Python is possible in principle (the gql transport
+accepts arbitrary headers) but is a browser-session-replication hack: it has to satisfy
+Django's CSRF and Referer checks, it risks Cloudflare bot management (`cf_clearance` is
+bound to IP and User-Agent, and aiohttp's TLS fingerprint is not a browser's), and Django
+sessions are typically far shorter-lived than the `trusted_device=True` token.
+
+The supported path is to **set a password on the Monarch account** (Settings → Security),
+which makes the standard login flow work and mints a long-lived token.
+
+> **Enable Two-Factor Authentication before you set the password, not after.**
+> A Google-only account's second factor is Google's. Adding a password creates a second
+> way in, and without Monarch MFA enabled that path is *single-factor* — a net downgrade
+> to account security. With MFA on, you are at password + TOTP. Use a long random password
+> from a password manager.
+
+## Importing an existing token (optional)
+
+If you already have a valid `Authorization: Token` value — i.e. the account has a password
+and you would rather not type it into the login form — you can store it directly:
 
 ```bash
 monarch-mcp-import-token
 ```
 
-You sign in on monarch.com exactly as you always do, copy the token from the
-`Authorization: Token <TOKEN>` request header on any `graphql` request (DevTools →
-Network), and paste it when prompted. The script reads it from stdin — never from
-`sys.argv`, which is visible to other processes via `ps` and lands in shell history —
-validates it with a live API call, and stores it in the keyring only if it works.
-
-This path never gives the server a password and creates no new credential on the account.
+The script reads the token from stdin — never from `sys.argv`, which is visible to other
+processes via `ps` and lands in shell history — rejects JWT-shaped values (that is the
+1-hour features/Ably token, not the session token), validates it with a live API call, and
+writes it to the keyring only if it works. This does not apply to Google-only accounts,
+which have no such token (see above).
 
 ## Session Management
 

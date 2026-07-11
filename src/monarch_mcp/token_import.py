@@ -1,13 +1,13 @@
 """Import an existing Monarch session token into the system keyring.
 
-For accounts that sign in with Google ("Continue with Google") there is no
-password, so the email/password flow in :mod:`monarch_mcp.auth_server` cannot
-be used at all. This path skips logging in entirely: you authenticate on
-monarch.com exactly as you normally do, then hand the resulting session token
-to this script.
+Use this when you already hold a valid ``Authorization: Token`` value and would
+rather not type a password into the login form.
 
-The server never sees a password, and no new credential is created on the
-account.
+This does **not** work for accounts that sign in with Google. The token scheme
+is minted by Monarch's ``/auth/login/`` endpoint in exchange for an email and
+password; a Google sign-in never hits that endpoint, so no token exists for the
+account. Those sessions are authenticated with a Django session cookie instead.
+See ``docs/authentication.md``.
 
 The token is read from stdin (never from ``sys.argv``, which is visible to
 other processes via ``ps`` and lands in shell history), validated with a live
