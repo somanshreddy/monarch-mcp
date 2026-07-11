@@ -11,8 +11,8 @@ Safety / gating:
 * Deselected by default via ``addopts = -m 'not integration'`` (pyproject.toml).
   Run them explicitly with ``MONARCH_LIVE_TESTS=1 pytest tests/integration -m integration``.
 * ``live_client`` additionally skips unless ``MONARCH_LIVE_TESTS=1`` and a
-  credential source exists (a keyring token via ``login_setup.py``, or
-  ``MONARCH_EMAIL`` / ``MONARCH_PASSWORD``).
+  keyring token exists (obtained through the browser login flow). There is no
+  email/password fallback — see :func:`monarch_mcp.server._get_monarch_client`.
 * This conftest deliberately **overrides** the mocked autouse ``_isolate`` from
   ``tests/conftest.py`` so tools reach the real API, and it **neuters** the
   credential-destroying recovery paths (``delete_token`` / ``trigger_auth_flow``)
@@ -27,7 +27,6 @@ from unittest.mock import patch
 
 import pytest
 from fastmcp import Client
-from monarchmoney import MonarchMoney
 
 from monarch_mcp.server import mcp
 from monarch_mcp.secure_session import secure_session
@@ -106,23 +105,11 @@ def live_client():
         pytest.skip("live e2e disabled — set MONARCH_LIVE_TESTS=1 to enable")
 
     client = secure_session.get_authenticated_client()
-    if client is not None:
-        return client
-
-    email = os.getenv("MONARCH_EMAIL")
-    password = os.getenv("MONARCH_PASSWORD")
-    if not (email and password):
+    if client is None:
         pytest.skip(
-            "no live Monarch credentials — run login_setup.py to store a keyring "
-            "token, or set MONARCH_EMAIL / MONARCH_PASSWORD"
+            "no live Monarch credentials — start the MCP server once and complete "
+            "the browser login to store a keyring token"
         )
-
-    client = MonarchMoney()
-    loop = asyncio.new_event_loop()
-    try:
-        loop.run_until_complete(client.login(email, password))
-    finally:
-        loop.close()
     return client
 
 

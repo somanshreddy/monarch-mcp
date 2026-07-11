@@ -6,7 +6,6 @@ import functools
 import inspect
 import json
 import logging
-import os
 import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -120,35 +119,23 @@ def _handle_mcp_errors(operation: str):
 # ── Client helpers ─────────────────────────────────────────────────────
 
 async def _get_monarch_client() -> MonarchMoney:
-    """Get or create MonarchMoney client instance using secure session storage."""
-    # Try to get authenticated client from secure session
+    """Get an authenticated MonarchMoney client from the system keyring.
+
+    The keyring is the only credential store.  There is deliberately no
+    email/password fallback: the underlying ``monarchmoney.login()``
+    defaults to ``use_saved_session=True, save_session=True``, which
+    persists the session token as an unencrypted pickle at a
+    CWD-relative path and ``pickle.load()``s it back on the next call.
+    The browser flow (see :mod:`monarch_mcp.auth_server`) is the single
+    supported way to obtain a token.
+    """
     client = secure_session.get_authenticated_client()
 
     if client is not None:
         logger.info("Using authenticated client from secure keyring storage")
         return client
 
-    # If no secure session, try environment credentials
-    email = os.getenv("MONARCH_EMAIL")
-    password = os.getenv("MONARCH_PASSWORD")
-
-    if email and password:
-        try:
-            client = MonarchMoney()
-            await client.login(email, password)
-            logger.info(
-                "Successfully logged into Monarch Money with environment credentials"
-            )
-
-            # Save the session securely
-            secure_session.save_authenticated_session(client)
-
-            return client
-        except Exception as e:
-            logger.error("Failed to login to Monarch Money: %s", e)
-            raise
-
-    # No credentials anywhere — open browser login and tell the user
+    # No token — open browser login and tell the user
     trigger_auth_flow()
     raise RuntimeError(
         "Authentication needed! A login page has been opened in your "
@@ -182,9 +169,7 @@ Then start using Monarch tools in Claude Desktop:
 Session persists across Claude restarts (weeks/months).
 Expired sessions are re-authenticated automatically.
 Credentials are entered in your browser, never through Claude.
-
-Alternative: run `python login_setup.py` in a terminal for
-headless environments where a browser is not available."""
+Only the resulting token is stored, in your system keyring."""
 
 
 @mcp.tool()
@@ -198,11 +183,9 @@ def check_auth_status() -> str:
         else:
             status = "No authentication token found in keyring\n"
 
-        if os.getenv("MONARCH_EMAIL"):
-            status += "Environment credentials configured: yes\n"
-
         status += (
-            "\nTry get_accounts to test connection or run login_setup.py if needed."
+            "\nTry get_accounts to test the connection. If no token is stored, "
+            "a browser login page opens automatically."
         )
 
         return status
@@ -218,7 +201,7 @@ def debug_session_loading() -> str:
         token = secure_session.load_token()
         if token:
             return "Token found in keyring."
-        return "No token found in keyring. Run login_setup.py to authenticate."
+        return "No token found in keyring. Call get_accounts to open browser login."
     except Exception as e:  # pylint: disable=broad-exception-caught
         logger.error("Keyring access failed: %s", e, exc_info=True)
         return "Keyring access failed. See the server logs for details."

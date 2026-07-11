@@ -25,8 +25,8 @@ credential source) every test **skips** — double safety against accidental liv
 
 The suite obtains a real client the same way the server does, in priority order:
 
-1. A **keyring token** — run `python login_setup.py` once to store one. (Recommended.)
-2. `MONARCH_EMAIL` / `MONARCH_PASSWORD` environment variables (the suite logs in once per session).
+A **keyring token**. Start the MCP server once and complete the browser login to
+store one. There is no email/password fallback.
 
 If neither is available, the suite skips with an explanatory message.
 

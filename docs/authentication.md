@@ -21,15 +21,26 @@ Technical details on how the Monarch MCP Server handles authentication, session 
 
 - Credentials are entered in your local browser, never transmitted through Claude Desktop
 - The auth server binds to `127.0.0.1` only (not accessible from the network)
-- MFA/2FA fully supported
+- The loopback endpoints enforce a Host allowlist (DNS-rebinding), an Origin check, and an
+  `application/json` Content-Type (forcing a CORS preflight this server fails) — closing login-CSRF
+- MFA/2FA fully supported; only a one-time TOTP code is used, no MFA secret is stored
+- The password is held in memory only long enough to span the MFA challenge, then scrubbed
 - Token stored in the OS keyring, not in plain-text files
 
-## Fallback: CLI Login
+## The keyring is the only credential store
 
-For headless environments where a browser is not available, run:
+There is deliberately no email/password fallback (no `MONARCH_EMAIL` / `MONARCH_PASSWORD`, no
+CLI login script). Those paths called `monarchmoney.login()` with library defaults —
+`use_saved_session=True, save_session=True` — which:
 
-```bash
-python login_setup.py
-```
+1. Persists the session token as an **unencrypted pickle** at `.mm/mm_session.pickle`, resolved
+   against the process's current working directory (under Claude Desktop, not a path you chose).
+2. `pickle.load()`s that file back on the next login, *before any credential check*. `pickle.load()`
+   on a file you do not control is arbitrary code execution — so the file is not just a token leak,
+   it is a code-execution sink in a process holding your Monarch session.
 
-This authenticates interactively in the terminal and stores the token in the same keyring location.
+The browser flow avoids both by passing `use_saved_session=False, save_session=False`. Removing the
+fallback means no code path in this server can write or read that pickle.
+
+A regression guard (`tests/test_server_edge_cases.py::test_get_client_ignores_env_credentials`)
+asserts that setting `MONARCH_EMAIL` / `MONARCH_PASSWORD` does **not** authenticate.

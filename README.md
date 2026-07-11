@@ -133,8 +133,9 @@ Key details:
 - **Credentials are entered in your browser only** — never through Claude Desktop
 - **Token stored in the OS keyring** — persists across restarts, lasts weeks/months
 - **Expired sessions re-authenticate automatically** — the browser login re-triggers on the next tool call
-- **MFA fully supported**
-- **Fallback**: run `python login_setup.py` in a terminal for headless environments
+- **MFA fully supported** — a one-time TOTP code; no MFA secret is ever stored
+- **No fallback by design** — the keyring is the only credential store; there is no
+  email/password environment-variable path (see [docs/authentication.md](docs/authentication.md))
 
 For technical details on the auth architecture, see [docs/authentication.md](docs/authentication.md).
 
@@ -239,8 +240,8 @@ paths). They are opt-in and never run in CI:
 MONARCH_LIVE_TESTS=1 uv run pytest tests/integration -m integration
 ```
 
-Prerequisites: a stored keyring token (run `python login_setup.py` once), or `MONARCH_EMAIL` /
-`MONARCH_PASSWORD` in the environment. Without these, the suite skips. The tests create and delete
+Prerequisites: a stored keyring token — start the server once and complete the browser login.
+Without one, the suite skips. The tests create and delete
 data prefixed with `MCP-Test-` and self-clean (a post-suite sweep removes any residue). See
 [`tests/integration/README.md`](tests/integration/README.md) for details and safety notes.
 

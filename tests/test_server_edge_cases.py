@@ -1,13 +1,13 @@
-"""Server edge-case unit tests (12 tests).
+"""Server edge-case unit tests.
 
-Covers _get_monarch_client env-credential path, check_auth_status/
+Covers _get_monarch_client (keyring-only), check_auth_status/
 debug_session_loading branches, update_transaction goal_id,
 refresh_accounts empty, and main().
 """
 # pylint: disable=missing-function-docstring
 
 import json
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch
 
 import pytest
 
@@ -17,56 +17,14 @@ from monarch_mcp.auth_server import with_auth_recovery
 
 
 # ===================================================================
-# get_monarch_client — environment credentials
+# get_monarch_client — keyring is the only credential store
 # ===================================================================
 
 
-async def test_get_client_env_credentials(monkeypatch):
-    """When keyring has no token, env credentials trigger login + save."""
-    monkeypatch.setenv("MONARCH_EMAIL", "user@test.com")
-    monkeypatch.setenv("MONARCH_PASSWORD", "secret123")
-
-    mock_client = AsyncMock()
-    mock_client.token = "new-tok"
-
-    with (
-        patch("monarch_mcp.server.secure_session") as mock_ss,
-        patch("monarch_mcp.server.MonarchMoney", return_value=mock_client),
-    ):
-        mock_ss.get_authenticated_client.return_value = None
-
-        result = await with_auth_recovery(_get_monarch_client())
-
-    assert result is mock_client
-    mock_client.login.assert_awaited_once_with("user@test.com", "secret123")
-    mock_ss.save_authenticated_session.assert_called_once_with(mock_client)
-
-
-async def test_get_client_env_login_failure(monkeypatch):
-    """When env login fails, exception propagates."""
-    monkeypatch.setenv("MONARCH_EMAIL", "user@test.com")
-    monkeypatch.setenv("MONARCH_PASSWORD", "wrong")
-
-    mock_client = AsyncMock()
-    mock_client.login.side_effect = RuntimeError("bad credentials")
-
-    with (
-        patch("monarch_mcp.server.secure_session") as mock_ss,
-        patch("monarch_mcp.server.MonarchMoney", return_value=mock_client),
-    ):
-        mock_ss.get_authenticated_client.return_value = None
-
-        with pytest.raises(RuntimeError, match="bad credentials"):
-            await with_auth_recovery(_get_monarch_client())
-
-
-async def test_get_client_no_credentials(mock_monarch_client, monkeypatch):
-    """When no keyring token and no env vars, trigger_auth_flow + RuntimeError."""
+async def test_get_client_no_credentials(mock_monarch_client):
+    """No keyring token → trigger_auth_flow + RuntimeError."""
     with patch("monarch_mcp.secure_session.keyring") as mock_kr:
         mock_kr.get_password.return_value = None
-
-        monkeypatch.delenv("MONARCH_EMAIL", raising=False)
-        monkeypatch.delenv("MONARCH_PASSWORD", raising=False)
 
         with (
             patch("monarch_mcp.server.trigger_auth_flow") as mock_auth,
@@ -75,6 +33,33 @@ async def test_get_client_no_credentials(mock_monarch_client, monkeypatch):
             await with_auth_recovery(_get_monarch_client())
 
         mock_auth.assert_called_once()
+
+
+async def test_get_client_ignores_env_credentials(mock_monarch_client, monkeypatch):
+    """Env credentials must NOT authenticate — the browser flow is the only path.
+
+    Regression guard. The removed env-var branch called ``MonarchMoney.login()``
+    with library defaults (``use_saved_session=True, save_session=True``), which
+    writes the session token to an unencrypted pickle at a CWD-relative path and
+    ``pickle.load()``s it back on the next call.
+    """
+    monkeypatch.setenv("MONARCH_EMAIL", "user@test.com")
+    monkeypatch.setenv("MONARCH_PASSWORD", "secret123")
+
+    with (
+        patch("monarch_mcp.secure_session.keyring") as mock_kr,
+        patch("monarch_mcp.server.MonarchMoney") as mock_mm,
+    ):
+        mock_kr.get_password.return_value = None
+
+        with (
+            patch("monarch_mcp.server.trigger_auth_flow") as mock_auth,
+            pytest.raises(RuntimeError, match="Authentication needed"),
+        ):
+            await with_auth_recovery(_get_monarch_client())
+
+        mock_auth.assert_called_once()
+        mock_mm.assert_not_called()
 
 
 # ===================================================================
@@ -88,15 +73,6 @@ async def test_check_auth_no_token(mcp_client):
         result = (await mcp_client.call_tool("check_auth_status")).content[0].text
 
     assert "No authentication token" in result
-
-
-async def test_check_auth_with_env_email(mcp_client, monkeypatch):
-    monkeypatch.setenv("MONARCH_EMAIL", "user@test.com")
-    result = (await mcp_client.call_tool("check_auth_status")).content[0].text
-
-    # Report that env credentials are configured without echoing the address.
-    assert "Environment credentials configured" in result
-    assert "user@test.com" not in result
 
 
 async def test_check_auth_exception(mcp_client):

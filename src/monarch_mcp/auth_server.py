@@ -11,7 +11,6 @@ import asyncio
 from dataclasses import dataclass
 import json
 import logging
-import os
 import socket
 import threading
 import time
@@ -488,11 +487,6 @@ def trigger_auth_flow() -> None:
             # Token is definitively invalid (401/403) — clear it
             logger.warning("Clearing stale token from keyring")
             secure_session.delete_token()
-
-        # Environment-variable credentials present (handled at tool-call time)
-        if os.getenv("MONARCH_EMAIL") and os.getenv("MONARCH_PASSWORD"):
-            logger.info("Environment credentials found — skipping browser auth")
-            return
 
         _auth_guard["active"] = True
 
